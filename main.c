@@ -5,7 +5,7 @@
 #define ESPI_GPIO_IMPL
 #include "espi_gpio.h"
 
-_inline void blink(size_t led, double dt);
+_inline void blink(volatile GPIO_Mem *mem, size_t led, double dt);
 
 int main(int argc, char **argv)
 {
@@ -15,26 +15,30 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    size_t n_pins = strtoul(argv[1]);
-    size_t dt = (1000 / n_pins / 2); /* 1 Hz / cycles (4)*/
+    size_t n_pins = strtoul(argv[1], NULL, 10);
+    assert_msg(is_valid_pin(n_pins), "invalid pin selected\n");
+    double dt = (500 / n_pins / 2); /* 1 Hz / cycles (4) */
 
     /* pointer into the GPIO memory*/
-    GPIO_Mem *gpio;
+    volatile GPIO_Mem *gpio;
 
     /* map the GPIO-MMIO pages into process memory */
     gpio = map_gpio();
 
+    /* set the selected gpio pins to output */
     for (size_t i = 0; i < n_pins; ++i) {
-        gpio_setoutput(i);
+	    GPIO_OUTPUT(gpio, i);
     }
 
     while (1) {
+	    /* run the lights to the right */
         for (size_t i = 0; i < n_pins; ++i) {
-            blink(i, dt);
+	        blink(gpio, i, dt);
         }
 
-        for (size_t i = n_pins; i > 0; --i) {
-            blink(i, dt);
+	    /* run them back to the left(excluding the last pin as it was already turned on ) */
+        for (size_t i = n_pins - 1; i > 0; --i) {
+            blink(gpio, i, dt);
         }
     }
 
@@ -42,9 +46,11 @@ int main(int argc, char **argv)
 }
 
 /* pulls a pin high for delta time (1Hz / sizeof pins) */
-_inline void blink(size_t led, double dt)
+_inline void blink(volatile GPIO_Mem *mem, size_t led, double dt)
 {
-    gpio_sethigh(led);
-    sleep(dt);
-    gpio_setlow(led);
+    printf("pin %d\n", led);
+    GPIO_SET(mem, led);
+    usleep(dt * 1000);
+    GPIO_CLR(mem, led);
 }
+

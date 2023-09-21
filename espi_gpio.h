@@ -48,9 +48,14 @@ enum modes {
 typedef uint32_t GPIO_Mem;
 
 volatile GPIO_Mem *map_gpio();
-void gpio_set_output(const size_t gpio_pin);
 int is_valid_pin(size_t pin);
+
+#if 0
+void gpio_set_output(const size_t gpio_pin);
+#endif
+#if 0
 size_t get_hardware_pin(size_t logical);
+#endif
 
 #ifdef ESPI_GPIO_IMPL
 

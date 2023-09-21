@@ -6,6 +6,7 @@
 #include <stddef.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <stdarg.h>
 #include <sys/mman.h>
 
 #define assert_syscall(sc) do { if ((sc) < 0) { printf ("syscall failed("#sc")\n"); exit(EXIT_FAILURE);} } while(0)
@@ -23,7 +24,14 @@
 #define GPIO_CLR(m, pin) *(m + 10) = 1<<pin
 #define GPIO_READ(m, pin) (*(m + 13) & (1<<pin))
 
-#define RPI_3_PINS  {			    \
+#ifdef DEBUG
+#define debug_printf(...) printf("[DEBUG]\t"); printf(__VA_ARGS__)
+#else
+#define debug_printf(...)
+#endif /* DEBUG */
+
+
+#define RPI_3_PINS  {               \
     2, 	3,  4,  17, 27, 22, 10,		\
     9, 	11, 0,  5,  6,  13, 19,		\
     26, 14, 15, 18, 23, 24, 25,		\
@@ -46,6 +54,11 @@ size_t get_hardware_pin(size_t logical);
 
 #ifdef ESPI_GPIO_IMPL
 
+#if 1
+#define MEM_PATH "/dev/gpiomem"
+#else
+#define MEM_PATH "/dev/mem"
+#endif
 static const size_t gpio_pins[] = RPI_3_PINS;
 
 volatile GPIO_Mem *map_gpio()
@@ -53,7 +66,7 @@ volatile GPIO_Mem *map_gpio()
     ssize_t gpio_fd;
     volatile GPIO_Mem *mem;
 
-    assert_syscall(gpio_fd = open("/dev/gpiomem", O_RDWR | O_SYNC));
+    assert_syscall(gpio_fd = open(MEM_PATH, O_RDWR | O_SYNC));
     assert_syscall(mem = mmap(NULL, 4096, PROT_READ | PROT_WRITE, MAP_SHARED, gpio_fd, GPIO_BASE));
 
     return mem;
@@ -66,7 +79,10 @@ int is_valid_pin(size_t pin)
 
 size_t get_hardware_pin(size_t logical)
 {
-    return gpio_pins[logical]; 
+#ifdef DEBUG
+    printf("GPIO pin %d mapped to %d\n",logical, gpio_pins[logical]);
+#endif
+    return gpio_pins[logical];
 }
 
 #endif /* ESPI_GPIO_IMPL */
